@@ -1,0 +1,27 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# Virtual environments
+venv/
+.env/
+
+# Runtime uploads (user images)
+uploads/
+
+# LoRA / model weights (very large files)
+lora_weights/
+*.bin
+*.pt
+*.safetensors
+
+# Jupyter / experiment files
+.ipynb_checkpoints/
+*.ipynb
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
