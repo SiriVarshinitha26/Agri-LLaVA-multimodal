@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agri-LLaVA</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --primary: #6b9b37;
+            --bg: #faf8f3;
+            --text: #3a4a2e;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, var(--primary), #527a29);
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 { font-size: 24px; }
+        
+        .lang-btns button {
+            padding: 8px 16px;
+            margin: 0 4px;
+            border: 2px solid white;
+            background: transparent;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        
+        .lang-btns button.active {
+            background: white;
+            color: var(--primary);
+        }
+        
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f0ede0;
+        }
+        
+        .message {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 16px;
+            animation: slideIn 0.3s;
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .message.user { flex-direction: row-reverse; }
+        
+        .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+        
+        .message.user .avatar { background: #d4a574; }
+        .message.assistant .avatar { background: var(--primary); }
+        
+        .content {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            line-height: 1.6;
+        }
+        
+        .message.user .content {
+            background: #d4a574;
+            color: white;
+        }
+        
+        .message.assistant .content {
+            background: white;
+            color: var(--text);
+        }
+        
+        .msg-image {
+            max-width: 200px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+        
+        .speak-btn {
+            margin-top: 8px;
+            padding: 6px 12px;
+            border: 2px solid var(--primary);
+            background: white;
+            color: var(--primary);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .speak-btn:hover {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .speak-btn.speaking {
+            background: #dc2626;
+            color: white;
+            border-color: #dc2626;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .typing {
+            display: none;
+            padding: 20px;
+        }
+        
+        .typing.active { display: block; }
+        
+        .input-area {
+            background: white;
+            padding: 20px;
+            border-top: 2px solid #ddd;
+        }
+        
+        .debug-console {
+            max-height: 200px;
+            overflow-y: auto;
+            background: #1e1e1e;
+            color: #0f0;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            border: 2px solid #333;
+            display: none;
+        }
+        
+        .debug-console.active {
+            display: block;
+        }
+        
+        .debug-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 5px;
+            color: #fff;
+        }
+        
+        .debug-btn {
+            padding: 4px 12px;
+            background: #333;
+            color: white;
+            border: 1px solid #555;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 11px;
+            margin-right: 5px;
+        }
+        
+        .preview {
+            display: none;
+            margin-bottom: 10px;
+            position: relative;
+            width: fit-content;
+        }
+        
+        .preview.active { display: block; }
+        
+        .preview img {
+            max-width: 120px;
+            border-radius: 8px;
+            border: 2px solid var(--primary);
+        }
+        
+        .preview button {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #dc2626;
+            color: white;
+            border: 2px solid white;
+            cursor: pointer;
+        }
+        
+        .input-row {
+            display: flex;
+            gap: 8px;
+            align-items: flex-end;
+        }
+        
+        .action-btns button {
+            width: 44px;
+            height: 44px;
+            border-radius: 8px;
+            border: 2px solid #ddd;
+            background: white;
+            font-size: 20px;
+            cursor: pointer;
+        }
+        
+        .action-btns button:hover { background: #f0ede0; }
+        .action-btns button.active { background: #dc2626; color: white; }
+        
+        textarea {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 15px;
+            resize: none;
+            font-family: inherit;
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        
+        .send-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 8px;
+            border: none;
+            background: var(--primary);
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+        }
+        
+        .send-btn:hover { background: #527a29; }
+        .send-btn:disabled { opacity: 0.5; }
+        
+        input[type="file"] { display: none; }
+
+        .lang-status {
+            font-size: 12px;
+            color: rgba(255,255,255,0.8);
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1 id="title">🌾 Agri-LLaVA</h1>
+            <div class="lang-status" id="langStatus">Current: English</div>
+        </div>
+        <div class="lang-btns">
+            <button class="active" data-lang="en">English</button>
+            <button data-lang="hi">हिंदी</button>
+            <button data-lang="te">తెలుగు</button>
+        </div>
+    </div>
+    
+    <div class="messages" id="messages"></div>
+    
+    <div class="typing" id="typing">🤔 Thinking...</div>
+    
+    <div class="input-area">
+        <!-- Debug Console -->
+        <div id="debugConsole" class="debug-console">
+            <div class="debug-header">
+                <strong>🔍 Debug Console</strong>
+                <button class="debug-btn" onclick="toggleDebugConsole()">Close</button>
+            </div>
+            <div id="debugLog"></div>
+        </div>
+        
+        <div style="margin-bottom: 10px;">
+            <button class="debug-btn" onclick="toggleDebugConsole()">🔍 Debug Console</button>
+            <button class="debug-btn" onclick="clearDebug()">🗑️ Clear Log</button>
+            <button class="debug-btn" onclick="testSpeech()">🧪 Test Speech</button>
+            <button class="debug-btn" onclick="clearChat()" style="background: #dc2626;">🔄 New Chat</button>
+        </div>
+        
+        <div class="preview" id="preview">
+            <img id="previewImg">
+            <button onclick="removeImg()">×</button>
+        </div>
+        
+        <div class="input-row">
+            <input type="file" id="fileInput" accept="image/*">
+            
+            <div class="action-btns">
+                <button onclick="document.getElementById('fileInput').click()">📷</button>
+                <button id="voiceBtn">🎤</button>
+            </div>
+            
+            <textarea id="input" placeholder="Type your question..." rows="1"></textarea>
+            
+            <button class="send-btn" onclick="send()">➤</button>
+        </div>
+    </div>
+    
+    <script>
+        const API = 'http://localhost:5000';
+        const convId = 'conv_' + Date.now();
+        let lang = 'en';
+        let img = null;
+        let recognition = null;
+        let isSpeaking = false;
+        let currentUtterance = null;
+        let currentAudio = null; // For online TTS
+        
+        const t = {
+            en: { 
+                title: '🌾Agri-LLaVA', 
+                placeholder: 'Ask me anything...', 
+                speak: '🔊 Listen',
+                stop: '⏹️ Stop',
+                status: 'Language: English'
+            },
+            hi: { 
+                title: '🌾 फसल बीमारी सहायक', 
+                placeholder: 'कुछ भी पूछो...', 
+                speak: '🔊 सुनो',
+                stop: '⏹️ रुको',
+                status: 'भाषा: हिंदी'
+            },
+            te: { 
+                title: '🌾 పంట వ్యాధి సహాయకుడు', 
+                placeholder: 'ఏదైనా అడగండి...', 
+                speak: '🔊 వినండి',
+                stop: '⏹️ ఆపండి',
+                status: 'భాష: తెలుగు'
+            }
+        };
+        
+        // Debug logging
+        function log(msg, type = 'info') {
+            const colors = { info: '#0ff', success: '#0f0', error: '#f00', warn: '#ff0' };
+            const time = new Date().toLocaleTimeString();
+            const div = document.getElementById('debugLog');
+            const entry = document.createElement('div');
+            entry.style.color = colors[type];
+            entry.textContent = `[${time}] ${msg}`;
+            div.appendChild(entry);
+            div.scrollTop = div.scrollHeight;
+            console.log(msg);
+        }
+        
+        function toggleDebugConsole() {
+            document.getElementById('debugConsole').classList.toggle('active');
+        }
+        
+        function clearDebug() {
+            document.getElementById('debugLog').innerHTML = '';
+            log('Debug cleared', 'info');
+        }
+        
+        // Test speech synthesis
+        function testSpeech() {
+            log('=== TESTING SPEECH ===', 'info');
+            
+            if (!('speechSynthesis' in window)) {
+                log('❌ Speech synthesis NOT supported!', 'error');
+                alert('Speech synthesis not supported in this browser');
+                return;
+            }
+            
+            log('✅ Speech synthesis is supported', 'success');
+            
+            const voices = speechSynthesis.getVoices();
+            log(`Found ${voices.length} voices`, 'info');
+            
+            // Check for language-specific voices
+            const langCode = lang === 'hi' ? 'hi' : lang === 'te' ? 'te' : 'en';
+            const langVoices = voices.filter(v => v.lang.startsWith(langCode));
+            
+            if (langVoices.length === 0 && lang !== 'te') {
+                const langName = lang === 'hi' ? 'Hindi' : 'English';
+                log(`❌ No ${langName} voice found!`, 'error');
+                alert(`⚠️ ${langName} voice not installed!\n\nTo enable speech:\n1. Go to Windows Settings → Time & Language → Speech\n2. Add ${langName} (India) voice\n3. Restart browser`);
+            } else if (lang === 'te') {
+                log('ℹ️ Telugu will use online TTS (Google Translate)', 'info');
+            }
+            
+            voices.forEach((v, i) => {
+                const marker = v.lang.startsWith(langCode) ? '🎯' : (v.default ? '⭐' : '');
+                log(`${i+1}. ${v.name} [${v.lang}] ${marker}`, 'info');
+            });
+            
+            // Test speak
+            const testText = lang === 'hi' ? 'नमस्ते, यह एक परीक्षण है' : 
+                           lang === 'te' ? 'నమస్కారం, ఇది ఒక పరీక్ష' : 
+                           'Hello, this is a test';
+            
+            log(`Testing with text: "${testText}"`, 'info');
+            
+            // For Telugu, use online TTS
+            if (lang === 'te') {
+                log('Using online TTS for Telugu test', 'info');
+                testOnlineTTS(testText);
+                return;
+            }
+            
+            const u = new SpeechSynthesisUtterance(testText);
+            u.lang = lang === 'hi' ? 'hi-IN' : 'en-US';
+            
+            const voice = voices.find(v => v.lang.startsWith(langCode));
+            if (voice) {
+                u.voice = voice;
+                log(`Using voice: ${voice.name}`, 'success');
+            } else {
+                log(`⚠️ No ${langCode} voice found, using default (may not work)`, 'warn');
+            }
+            
+            u.onstart = () => log('✅ Test speech STARTED', 'success');
+            u.onend = () => log('✅ Test speech ENDED', 'success');
+            u.onerror = (e) => {
+                log(`❌ Test speech ERROR: ${e.error}`, 'error');
+                if (e.error === 'language-unavailable') {
+                    alert(`❌ ${lang.toUpperCase()} language pack not installed!\n\nInstall it from Windows Settings → Speech`);
+                }
+            };
+            
+            speechSynthesis.speak(u);
+        }
+        
+        // Test online TTS
+        async function testOnlineTTS(text) {
+            try {
+                const encodedText = encodeURIComponent(text);
+                const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=te&client=tw-ob&q=${encodedText}`;
+                
+                log('Creating audio element...', 'info');
+                const audio = new Audio(audioUrl);
+                
+                audio.onloadstart = () => log('Loading audio...', 'info');
+                audio.oncanplay = () => log('Audio ready', 'success');
+                audio.onplay = () => log('✅ Online TTS test STARTED', 'success');
+                audio.onended = () => log('✅ Online TTS test ENDED', 'success');
+                audio.onerror = (e) => {
+                    log(`❌ Online TTS test ERROR`, 'error');
+                    alert('Telugu TTS test failed. Check internet connection.');
+                };
+                
+                await audio.play();
+            } catch (error) {
+                log(`❌ Online TTS test failed: ${error.message}`, 'error');
+            }
+        }
+        
+        // Language selection
+        document.querySelectorAll('.lang-btns button').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.lang-btns button').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                lang = this.dataset.lang;
+                document.getElementById('title').textContent = t[lang].title;
+                document.getElementById('input').placeholder = t[lang].placeholder;
+                document.getElementById('langStatus').textContent = t[lang].status;
+                log(`Language changed to: ${lang}`, 'info');
+                
+                // Stop any speech
+                if (isSpeaking) {
+                    if (currentAudio) {
+                        currentAudio.pause();
+                        currentAudio = null;
+                    }
+                    speechSynthesis.cancel();
+                    isSpeaking = false;
+                }
+            });
+        });
+        
+        // File handling
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                img = file;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    document.getElementById('previewImg').src = e.target.result;
+                    document.getElementById('preview').classList.add('active');
+                    log('🆕 NEW image uploaded - will clear previous context', 'info');
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        function removeImg() {
+            img = null;
+            document.getElementById('preview').classList.remove('active');
+            document.getElementById('fileInput').value = '';
+            log('🗑️ Image removed', 'info');
+        }
+        
+        // Voice input
+        document.getElementById('voiceBtn').addEventListener('click', function() {
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                alert('Voice input not supported');
+                return;
+            }
+            
+            if (!recognition) {
+                recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+                recognition.continuous = false;
+                recognition.interimResults = false;
+                
+                recognition.onresult = (e) => {
+                    document.getElementById('input').value = e.results[0][0].transcript;
+                };
+                
+                recognition.onend = () => {
+                    document.getElementById('voiceBtn').classList.remove('active');
+                };
+            }
+            
+            if (this.classList.contains('active')) {
+                recognition.stop();
+                this.classList.remove('active');
+            } else {
+                recognition.lang = lang === 'hi' ? 'hi-IN' : lang === 'te' ? 'te-IN' : 'en-US';
+                recognition.start();
+                this.classList.add('active');
+            }
+        });
+        
+        // Keyboard handling
+        document.getElementById('input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                send();
+            }
+        });
+        
+        // Auto-resize textarea
+        document.getElementById('input').addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+        });
+        
+        // Add message to chat
+        function addMsg(type, text, image = null) {
+            const div = document.createElement('div');
+            div.className = `message ${type}`;
+            
+            const avatar = document.createElement('div');
+            avatar.className = 'avatar';
+            avatar.textContent = type === 'user' ? '👤' : '🤖';
+            
+            const content = document.createElement('div');
+            content.className = 'content';
+            
+            if (image) {
+                const img = document.createElement('img');
+                img.src = image;
+                img.className = 'msg-image';
+                content.appendChild(img);
+            }
+            
+            const textDiv = document.createElement('div');
+            textDiv.textContent = text;
+            content.appendChild(textDiv);
+            
+            // Add speak button for assistant
+            if (type === 'assistant') {
+                const btn = document.createElement('button');
+                btn.className = 'speak-btn';
+                btn.textContent = t[lang].speak;
+                btn.dataset.text = text;
+                btn.addEventListener('click', handleSpeakClick);
+                content.appendChild(btn);
+            }
+            
+            div.appendChild(avatar);
+            div.appendChild(content);
+            document.getElementById('messages').appendChild(div);
+            document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+        }
+        
+        // Handle speak button click
+        async function handleSpeakClick(e) {
+            const btn = e.target;
+            const text = btn.dataset.text;
+            
+            log('=== SPEAK BUTTON CLICKED ===', 'info');
+            log(`Language: ${lang}`, 'info');
+            log(`Text: ${text.substring(0, 100)}...`, 'info');
+            
+            // If this button is speaking, stop it
+            if (btn.classList.contains('speaking')) {
+                log('Stopping speech...', 'warn');
+                if (currentAudio) {
+                    currentAudio.pause();
+                    currentAudio = null;
+                }
+                speechSynthesis.cancel();
+                btn.classList.remove('speaking');
+                btn.textContent = t[lang].speak;
+                isSpeaking = false;
+                return;
+            }
+            
+            // Stop any other speech
+            if (isSpeaking) {
+                log('Stopping previous speech...', 'warn');
+                if (currentAudio) {
+                    currentAudio.pause();
+                    currentAudio = null;
+                }
+                speechSynthesis.cancel();
+                document.querySelectorAll('.speak-btn.speaking').forEach(b => {
+                    b.classList.remove('speaking');
+                    b.textContent = t[lang].speak;
+                });
+            }
+            
+            const langCode = lang === 'hi' ? 'hi' : lang === 'te' ? 'te' : 'en';
+            
+            // For Telugu, use online TTS API
+            if (lang === 'te') {
+                log('Using online TTS for Telugu', 'info');
+                await speakWithOnlineTTS(text, btn);
+                return;
+            }
+            
+            // For Hindi and English, use browser TTS
+            if (!('speechSynthesis' in window)) {
+                log('❌ Speech NOT supported', 'error');
+                alert('Speech not supported in this browser');
+                return;
+            }
+            
+            const voices = speechSynthesis.getVoices();
+            log(`Available voices: ${voices.length}`, 'info');
+            
+            if (voices.length === 0) {
+                log('⚠️ No voices loaded yet, retrying...', 'warn');
+                setTimeout(() => handleSpeakClick(e), 100);
+                return;
+            }
+            
+            const voice = voices.find(v => v.lang.startsWith(langCode));
+            
+            if (!voice) {
+                log(`⚠️ No ${lang} voice found`, 'warn');
+                alert(`⚠️ ${lang.toUpperCase()} voice not available.\n\nFor Telugu, trying online service...`);
+                if (lang === 'te') {
+                    await speakWithOnlineTTS(text, btn);
+                }
+                return;
+            }
+            
+            log(`✅ Found voice: ${voice.name} [${voice.lang}]`, 'success');
+            
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = lang === 'hi' ? 'hi-IN' : 'en-US';
+            utterance.rate = 0.8;
+            utterance.pitch = 1.0;
+            utterance.volume = 1.0;
+            utterance.voice = voice;
+            
+            btn.classList.add('speaking');
+            btn.textContent = t[lang].stop;
+            isSpeaking = true;
+            
+            utterance.onstart = () => log('✅ Speech STARTED', 'success');
+            
+            utterance.onend = () => {
+                log('✅ Speech ENDED', 'success');
+                btn.classList.remove('speaking');
+                btn.textContent = t[lang].speak;
+                isSpeaking = false;
+            };
+            
+            utterance.onerror = (e) => {
+                log(`❌ Speech ERROR: ${e.error}`, 'error');
+                btn.classList.remove('speaking');
+                btn.textContent = t[lang].speak;
+                isSpeaking = false;
+            };
+            
+            log('Starting speech...', 'info');
+            speechSynthesis.cancel();
+            setTimeout(() => {
+                speechSynthesis.speak(utterance);
+                log('Speech command sent', 'success');
+            }, 50);
+        }
+        
+        // Speak using online TTS API for Telugu
+        async function speakWithOnlineTTS(text, btn) {
+            try {
+                log('Requesting online TTS...', 'info');
+                btn.classList.add('speaking');
+                btn.textContent = t[lang].stop;
+                isSpeaking = true;
+                
+                // Use Google Translate TTS (free, no API key needed)
+                const encodedText = encodeURIComponent(text.substring(0, 200)); // Limit length
+                const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=te&client=tw-ob&q=${encodedText}`;
+                
+                log(`Audio URL created`, 'success');
+                
+                currentAudio = new Audio(audioUrl);
+                
+                currentAudio.onloadstart = () => log('Loading audio...', 'info');
+                currentAudio.oncanplay = () => log('Audio ready to play', 'success');
+                currentAudio.onplay = () => log('✅ Online TTS STARTED', 'success');
+                
+                currentAudio.onended = () => {
+                    log('✅ Online TTS ENDED', 'success');
+                    btn.classList.remove('speaking');
+                    btn.textContent = t[lang].speak;
+                    isSpeaking = false;
+                    currentAudio = null;
+                };
+                
+                currentAudio.onerror = (e) => {
+                    log(`❌ Online TTS ERROR`, 'error');
+                    btn.classList.remove('speaking');
+                    btn.textContent = t[lang].speak;
+                    isSpeaking = false;
+                    alert('Could not load Telugu audio. Check internet connection.');
+                    currentAudio = null;
+                };
+                
+                await currentAudio.play();
+                
+            } catch (error) {
+                log(`❌ Online TTS failed: ${error.message}`, 'error');
+                btn.classList.remove('speaking');
+                btn.textContent = t[lang].speak;
+                isSpeaking = false;
+                alert('Telugu speech failed. Please check internet connection.');
+            }
+        }
+        
+        // Send message
+        async function send() {
+            const input = document.getElementById('input');
+            const text = input.value.trim();
+            
+            if (!text && !img) return;
+            
+            // Show user message
+            if (img) {
+                const reader = new FileReader();
+                reader.onload = (e) => addMsg('user', text || 'Image uploaded', e.target.result);
+                reader.readAsDataURL(img);
+                log(`📤 Sending message with image`, 'info');
+            } else {
+                addMsg('user', text);
+                log(`📤 Sending text message: ${text.substring(0, 50)}...`, 'info');
+            }
+            
+            input.value = '';
+            input.style.height = 'auto';
+            document.getElementById('typing').classList.add('active');
+            
+            // Send to API
+            const formData = new FormData();
+            formData.append('conversation_id', convId);
+            formData.append('question', text);
+            formData.append('language', lang);
+            if (img) formData.append('image', img);
+            
+            try {
+                const res = await fetch(`${API}/chat`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await res.json();
+                document.getElementById('typing').classList.remove('active');
+                
+                if (data.success) {
+                    addMsg('assistant', data.response);
+                    log(`✅ Response received: ${data.response.substring(0, 50)}...`, 'success');
+                    // Don't remove image - keep it in preview for reference
+                    // User can manually remove if needed
+                } else {
+                    addMsg('assistant', '❌ Error: ' + data.error);
+                    log(`❌ Error: ${data.error}`, 'error');
+                }
+            } catch (err) {
+                document.getElementById('typing').classList.remove('active');
+                addMsg('assistant', '❌ Connection error');
+                log(`❌ Connection error: ${err}`, 'error');
+            }
+        }
+        
+        // Clear chat and start fresh
+        async function clearChat() {
+            if (!confirm('Start a new chat? This will clear all messages and images.')) {
+                return;
+            }
+            
+            try {
+                log('🔄 Clearing chat...', 'info');
+                
+                // Clear frontend
+                document.getElementById('messages').innerHTML = '';
+                removeImg();
+                
+                // Clear backend
+                const res = await fetch(`${API}/clear`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({conversation_id: convId})
+                });
+                
+                if (res.ok) {
+                    log('✅ Chat cleared successfully', 'success');
+                    addMsg('assistant', lang === 'hi' ? 'नई बातचीत शुरू। कुछ पूछो!' : 
+                                      lang === 'te' ? 'కొత్త చాట్ ప్రారంభం. ఏదైనా అడగండి!' : 
+                                      'New chat started. Ask me anything!');
+                } else {
+                    log('⚠️ Backend clear failed, but frontend cleared', 'warn');
+                }
+            } catch (err) {
+                log(`❌ Clear error: ${err}`, 'error');
+            }
+        }
+        
+        // Load voices
+        if ('speechSynthesis' in window) {
+            speechSynthesis.onvoiceschanged = () => {
+                const voices = speechSynthesis.getVoices();
+                log(`Voices loaded: ${voices.length}`, 'success');
+            };
+            
+            // Initial load
+            setTimeout(() => {
+                const voices = speechSynthesis.getVoices();
+                if (voices.length > 0) {
+                    log(`Initial voices: ${voices.length}`, 'success');
+                }
+            }, 1000);
+        }
+        
+        log('App initialized', 'success');
+    </script>
+</body>
+</html>

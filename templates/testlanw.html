@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ t["title"] }}</title>
+</head>
+<body>
+
+    <h1>{{ t["title"] }}</h1>
+    <p id="textToSpeak">{{ t["description"] }}</p>
+
+    <button>{{ t["login"] }}</button>
+    <button>{{ t["signup"] }}</button>
+
+    <hr>
+
+    <!-- Language Switcher -->
+    <a href="/?lang=en">English</a> |
+    <a href="/?lang=te">తెలుగు</a> |
+    <a href="/?lang=hi">हिन्दी</a>
+
+    <hr>
+
+    <h2>🎤 Voice Features</h2>
+
+    <!-- SPEAK IN ALL LANGUAGES -->
+    <button onclick="speakLang('en-IN')">🔊 Speak English</button>
+    <button onclick="speakTelugu()">🔊 Speak Telugu</button>
+    <button onclick="speakLang('hi-IN')">🔊 Speak Hindi</button>
+
+    <hr>
+
+    <!-- Speech to Text -->
+    <button onclick="startListening()">🎙 Speak Now</button>
+    <p><b>You said:</b> <span id="speechResult"></span></p>
+
+
+<script>
+let voices = [];
+
+// Load available voices
+function loadVoices() {
+    voices = speechSynthesis.getVoices();
+}
+speechSynthesis.onvoiceschanged = loadVoices;
+
+
+// ---------- GENERIC SPEAK FUNCTION ----------
+function speakLang(langCode) {
+    const msg = new SpeechSynthesisUtterance();
+    msg.text = document.getElementById("textToSpeak").innerText;
+    msg.lang = langCode;
+
+    // Pick matching voice if available
+    let voice = voices.find(v => v.lang === langCode);
+    if (voice) msg.voice = voice;
+
+    speechSynthesis.speak(msg);
+}
+
+
+// ---------- TELUGU SPECIAL FUNCTION ----------
+function getTeluguVoice() {
+    // Try actual Telugu voices if browser has any
+    let telugu = voices.find(v => v.lang === "te-IN" || v.lang.includes("Telugu"));
+    if (telugu) return telugu;
+
+    // If no Telugu voice available → fallback to best Indian voice
+    let hindi = voices.find(v => v.lang === "hi-IN" || v.name.includes("Google हिन्दी"));
+    if (hindi) return hindi;
+
+    let indianEnglish = voices.find(v => v.lang === "en-IN");
+    if (indianEnglish) return indianEnglish;
+
+    // Last fallback: any available voice
+    return voices[0];
+}
+
+function speakTelugu() {
+    const msg = new SpeechSynthesisUtterance();
+    msg.text = document.getElementById("textToSpeak").innerText;
+    msg.voice = getTeluguVoice();
+    msg.lang = msg.voice.lang;
+    speechSynthesis.speak(msg);
+}
+
+
+// ---------- SPEECH TO TEXT ----------
+function startListening() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+        alert("Speech Recognition not supported.");
+        return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "{{ lang }}-IN";
+    recognition.start();
+
+    recognition.onresult = (event) => {
+        document.getElementById("speechResult").innerText =
+            event.results[0][0].transcript;
+    };
+}
+</script>
+
+</body>
+</html>
