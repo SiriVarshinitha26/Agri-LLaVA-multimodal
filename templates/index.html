@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🌾 Agri-LLaVA — Intelligent Image Analysis</title>
+  <style>
+    body {
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: linear-gradient(135deg, #f3fff3, #e9fce9);
+      color: #1b4332;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      height: 100vh;
+      margin: 0;
+      padding: 40px 20px;
+    }
+
+    h1 {
+      color: #2d6a4f;
+      margin-bottom: 10px;
+      font-size: 2em;
+    }
+
+    p {
+      margin-top: 0;
+      color: #344e41;
+      font-size: 1.1em;
+      text-align: center;
+    }
+
+    form {
+      background: white;
+      border-radius: 10px;
+      padding: 20px 30px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 90%;
+      max-width: 500px;
+      margin-top: 20px;
+    }
+
+    input[type="file"], input[type="text"], button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 10px;
+      border-radius: 8px;
+      border: 1px solid #b7e4c7;
+      font-size: 1em;
+    }
+
+    input[type="text"]:focus {
+      outline: none;
+      border-color: #52b788;
+      box-shadow: 0 0 5px rgba(82, 183, 136, 0.4);
+    }
+
+    button {
+      background-color: #52b788;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+
+    button:hover {
+      background-color: #40916c;
+    }
+
+    #output {
+      margin-top: 30px;
+      background: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      width: 90%;
+      max-width: 500px;
+      font-size: 1.1em;
+      white-space: pre-wrap;
+      color: #1b4332;
+      text-align: left;
+    }
+
+    .spinner {
+      margin-top: 20px;
+      width: 30px;
+      height: 30px;
+      border: 3px solid #b7e4c7;
+      border-top: 3px solid #40916c;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      display: none;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    footer {
+      margin-top: auto;
+      color: #588157;
+      font-size: 0.9em;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h1>🌿 Agri-LLaVA Image Analyzer</h1>
+  <p>Upload an image and ask a question about it — powered by AI.</p>
+
+  <form id="form" enctype="multipart/form-data">
+    <input type="file" name="image" accept="image/*" required />
+    <input type="text" name="question" placeholder="Ask about the image..." required />
+    <button type="submit">🔍 Analyze</button>
+    <div class="spinner" id="spinner"></div>
+  </form>
+
+  <div id="output">🖼️ Waiting for your input...</div>
+
+  <footer>© 2025 Agri-LLaVA | Smart Agricultural Vision Assistant</footer>
+
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
