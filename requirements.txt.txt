@@ -1,0 +1,14 @@
+flask
+requests
+pillow
+numpy
+torch
+transformers
+peft
+accelerate
+datasets
+unsloth
+huggingface_hub
+rarfile
+jinja2==3.1.0
+scikit-learn
